@@ -1,0 +1,90 @@
+﻿@page "/encode"
+@inject IJSRuntime JSRuntime
+
+@if (ErrorState)
+{
+    <div class="alert alert-danger" role="alert" @onclick="()=>SetErrorState(false)">
+        <h4 class="alert-heading">Well, that didn't work.</h4>
+        <p>
+            The text in the upper box needs to be valid base64 encoded gzipped text if you're going to try to decode it.
+            Click <button type="button" class="btn btn-outline-info btn-sm" @onclick="CreateSample">here</button> to load this window with an example and then press the decode button.
+        </p>
+    </div>
+}
+<div class="form-group shadow-textarea">
+    <textarea class="form-control z-depth-1" id="originalTextArea" rows="7" placeholder="Put your text here..." @bind="model.OriginalText"></textarea>
+</div>
+<div class="form-group shadow-textarea">
+    <textarea readonly class="form-control z-depth-1" id="transformedTextArea" rows="7" placeholder="Copy result from here..." @bind="model.TransformedText"></textarea>
+</div>
+<div class="btn-group" role="group" aria-label="Basic example">
+    <button class="btn btn-primary" @onclick="EncodeText">encode</button>
+    <button class="btn btn-primary" @onclick="DecodeText">decode</button>
+</div>
+<div class="btn-group" role="group" aria-label="Basic example">
+    <button class="btn btn-secondary" @onclick="CopyTextToClipboard">copy</button>
+    <button class="btn btn-secondary" @onclick="SwapText">swap</button>
+    <button class="btn btn-secondary" @onclick="ClearText">clear</button>
+</div>
+
+@code {
+    private EncodeModel model = new EncodeModel();
+    private bool ErrorState = false;
+
+    private void SetErrorState(bool errorState)
+    {
+        this.ErrorState = errorState;
+        //StateHasChanged();
+    }
+
+    private async Task CopyTextToClipboard()
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", model.TransformedText);
+    }
+
+    private void CreateSample()
+    {
+        Random r = new Random();
+        string s = r.Next(100) > 95 
+            ? "If you click around long enough, you're bound to find an easter egg. Congratulations!" 
+            : "Nice job. Now go find something else to decode.";
+        model.OriginalText = GzipEncodeDecode.Compress(s);
+    }
+
+    private void EncodeText()
+    {
+        SetErrorState(false);
+        model.TransformedText = GzipEncodeDecode.Compress(model.OriginalText);
+    }
+
+    private void DecodeText()
+    {
+        try
+        {
+            SetErrorState(false);
+            model.TransformedText = GzipEncodeDecode.Decompress(model.OriginalText);
+        }
+        catch (Exception)
+        {
+            SetErrorState(true);
+        }
+    }
+
+    private void SwapText()
+    {
+        model.OriginalText = model.TransformedText;
+        model.TransformedText = string.Empty;
+    }
+
+    private void ClearText()
+    {
+        model.OriginalText = string.Empty;
+        model.TransformedText = string.Empty;
+    }
+
+    public class EncodeModel
+    {
+        public string OriginalText { get; set; }
+        public string TransformedText { get; set; }
+    }
+}
